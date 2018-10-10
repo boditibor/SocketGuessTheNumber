@@ -1,4 +1,5 @@
 import socket
+import struct
 import sys
 
 
@@ -27,8 +28,11 @@ class SimpleTCPSelectClient:
         while True:
             msg = raw_input('Message: ')
             if msg != '':
-                msg = msg.strip()
-                self.client.send(msg)
+                values = (msg[0], int(msg[1:]))
+                print values
+                packer = struct.Struct('cH')
+                packed_data = packer.pack(*values)
+                self.client.send(packed_data)
             self.handleIncomingMessageFromRemoteServer()
 
 

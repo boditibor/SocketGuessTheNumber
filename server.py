@@ -1,11 +1,15 @@
+import operator
 import select
 import socket
 import sys
+import struct
 from random import randint
 
 
 class SimpleTCPSelectServer:
     randomNumber = randint(1, 100)
+    solved = False
+    clients = []
 
     def __init__(self, addr='localhost', port=10001, timeout=1):
         self.server = self.setupServer(addr, port)
@@ -34,13 +38,36 @@ class SimpleTCPSelectServer:
         connection.setblocking(0)  # or connection.settimeout(1.0)
         self.inputs.append(connection)
 
+    def applyOp(self, in1, op, in2):
+        ops = {'<': operator.lt, '>': operator.gt, '=': operator.eq}
+        return ops[op](in1, in2)
+
     def handleDataFromClient(self, sock):
         data = sock.recv(1024)
         data = data.strip()
         if data:
-            print data
             print self.randomNumber
-            sock.sendall("OK")
+            unpacker = struct.Struct('cH')
+            unpacked_data = unpacker.unpack(data)
+            print 'Unpacked data:', unpacked_data
+            bool = self.applyOp(self.randomNumber, unpacked_data[0], unpacked_data[1])
+            if unpacked_data[0] == '<' or unpacked_data[0] == '>':
+                if bool:
+                    sock.send("yes")
+                else:
+                    sock.send("no")
+            if unpacked_data[0] == '=':
+                if bool:
+                    sock.send("win")
+                    print "Close the system"
+                    for c in self.clients:
+                        if c != sock:
+                            c.send("end")
+                            c.shutdown(socket.SHUT_RDWR)
+                            c.close()
+                    self.inputs = []
+                else:
+                    sock.send("no")
         else:
             # Interpret empty result as closed connection
             print >> sys.stderr, 'closing', sock.getpeername(), 'after reading no data'
@@ -50,9 +77,11 @@ class SimpleTCPSelectServer:
 
     def handleInputs(self, readable):
         for sock in readable:
+            print sock
             if sock is self.server:
                 self.handleNewConnection(sock)
             else:
+                self.clients.append(sock)
                 self.handleDataFromClient(sock)
 
     def handleExceptionalCondition(self, exceptional):
