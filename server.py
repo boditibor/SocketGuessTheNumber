@@ -46,6 +46,8 @@ class SimpleTCPSelectServer:
         data = sock.recv(1024)
         data = data.strip()
         if data:
+            if self.solved:
+                sock.send("end")
             print self.randomNumber
             unpacker = struct.Struct('cH')
             unpacked_data = unpacker.unpack(data)
@@ -58,14 +60,8 @@ class SimpleTCPSelectServer:
                     sock.send("no")
             if unpacked_data[0] == '=':
                 if bool:
+                    self.solved = True
                     sock.send("win")
-                    print "Close the system"
-                    for c in self.clients:
-                        if c != sock:
-                            c.send("end")
-                            c.shutdown(socket.SHUT_RDWR)
-                            c.close()
-                    self.inputs = []
                 else:
                     sock.send("no")
         else:

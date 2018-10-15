@@ -18,6 +18,12 @@ class SimpleTCPSelectClient:
 
     def handleIncomingMessageFromRemoteServer(self):
         data = self.client.recv(4096)
+        if data == "win":
+            print data
+            sys.exit()
+        if data == "end":
+            print data
+            sys.exit()
         if not data:
             print '\nDisconnected from server'
             sys.exit()
