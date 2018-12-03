@@ -43,37 +43,39 @@ class SimpleTCPSelectServer:
         return ops[op](in1, in2)
 
     def handleDataFromClient(self, sock):
-        data = sock.recv(1024)
-        data = data.strip()
-        if data:
-            if self.solved:
-                sock.send("end")
-            print self.randomNumber
-            unpacker = struct.Struct('cH')
-            unpacked_data = unpacker.unpack(data)
-            print 'Unpacked data:', unpacked_data
-            bool = self.applyOp(self.randomNumber, unpacked_data[0], unpacked_data[1])
-            if unpacked_data[0] == '<' or unpacked_data[0] == '>':
-                if bool:
-                    sock.send("yes")
-                else:
-                    sock.send("no")
-            if unpacked_data[0] == '=':
-                if bool:
-                    self.solved = True
-                    sock.send("win")
-                else:
-                    sock.send("no")
-        else:
-            # Interpret empty result as closed connection
-            print >> sys.stderr, 'closing', sock.getpeername(), 'after reading no data'
-            # Stop listening for input on the connection
+        if self.solved:
+            sock.send("end")
             self.inputs.remove(sock)
             sock.close()
+        else:
+            data = sock.recv(1024)
+            data = data.strip()
+            if data and not self.solved:
+                print self.randomNumber
+                unpacker = struct.Struct('cH')
+                unpacked_data = unpacker.unpack(data)
+                print 'Unpacked data:', unpacked_data
+                bool = self.applyOp(self.randomNumber, unpacked_data[0], unpacked_data[1])
+                if unpacked_data[0] == '<' or unpacked_data[0] == '>':
+                    if bool:
+                        sock.send("yes")
+                    else:
+                        sock.send("no")
+                if unpacked_data[0] == '=':
+                    if bool:
+                        self.solved = True
+                        sock.send("win")
+                    else:
+                        sock.send("no")
+            else:
+                # Interpret empty result as closed connection
+                print >> sys.stderr, 'closing', sock.getpeername(), 'after reading no data'
+                # Stop listening for input on the connection
+                self.inputs.remove(sock)
+                sock.close()
 
     def handleInputs(self, readable):
         for sock in readable:
-            print sock
             if sock is self.server:
                 self.handleNewConnection(sock)
             else:
