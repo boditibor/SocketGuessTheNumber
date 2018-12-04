@@ -17,7 +17,7 @@ while True:
 	if tmp[1][0:6] == "csomag":
 		packages.append(tmp[1])
 		print(packages)
-		sock.sendto('Got the package!' + str(tmp[1]), client)
+		sock.sendto('Got the package! ' + str(tmp[1]), client)
 
 sock.close()
 
