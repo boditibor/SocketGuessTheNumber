@@ -3,13 +3,12 @@ import select
 import socket
 import sys
 import struct
-from random import randint
 
 
 class SimpleTCPSelectServer:
-    randomNumber = randint(1, 100)
     solved = False
     clients = []
+    packages = ["csomag1 haz1", "csomag2 haz1", "csomag3 haz1", "csomag4 haz2", "csomag5 haz2", "csomag6 haz2"]
 
     def __init__(self, addr='localhost', port=10001, timeout=1):
         self.server = self.setupServer(addr, port)
@@ -38,35 +37,46 @@ class SimpleTCPSelectServer:
         connection.setblocking(0)  # or connection.settimeout(1.0)
         self.inputs.append(connection)
 
-    def applyOp(self, in1, op, in2):
-        ops = {'<': operator.lt, '>': operator.gt, '=': operator.eq}
-        return ops[op](in1, in2)
-
     def handleDataFromClient(self, sock):
-        if self.solved:
-            sock.send("end")
-            self.inputs.remove(sock)
-            sock.close()
-        else:
-            data = sock.recv(1024)
-            data = data.strip()
-            if data and not self.solved:
-                print self.randomNumber
-                unpacker = struct.Struct('cH')
+            clientOnline = True
+            try:
+                data = sock.recv(1024)
+                data = data.strip()
+            except socket.error:
+                print 'Client was closed!'
+                clientOnline = False
+            if clientOnline and data:
+                unpacker = struct.Struct('i')
                 unpacked_data = unpacker.unpack(data)
-                print 'Unpacked data:', unpacked_data
-                bool = self.applyOp(self.randomNumber, unpacked_data[0], unpacked_data[1])
-                if unpacked_data[0] == '<' or unpacked_data[0] == '>':
-                    if bool:
-                        sock.send("yes")
+                if unpacked_data[0] == 1:
+                    if len(self.packages) < 1:
+                        sock.send('Out of package')
                     else:
-                        sock.send("no")
-                if unpacked_data[0] == '=':
-                    if bool:
-                        self.solved = True
-                        sock.send("win")
+                        package = self.packages[len(self.packages)-1]
+                        self.packages.remove(self.packages[len(self.packages)-1])
+                        packed_data = struct.pack("{}s".format(len(package)), package)
+                        sock.send(packed_data)
+                elif unpacked_data[0] == 2:
+                    if len(self.packages) < 2:
+                        sock.send('Out of package')
                     else:
-                        sock.send("no")
+                        package = self.packages[len(self.packages)-1] + ' ' + self.packages[len(self.packages)-2]
+                        self.packages.remove(self.packages[len(self.packages)-1])
+                        self.packages.remove(self.packages[len(self.packages)-1])
+                        packed_data = struct.pack("{}s".format(len(package)), package)
+                        sock.send(packed_data)
+                elif unpacked_data[0] == 3:
+                    if len(self.packages) < 3:
+                        sock.send('Out of package')
+                    else:
+                        package = self.packages[len(self.packages)-1] + ' ' + self.packages[len(self.packages)-2] +\
+                                  ' ' + self.packages[len(self.packages)-3]
+                        self.packages.remove(self.packages[len(self.packages)-1])
+                        self.packages.remove(self.packages[len(self.packages)-1])
+                        self.packages.remove(self.packages[len(self.packages)-1])
+                        packed_data = struct.pack("{}s".format(len(package)), package)
+                        sock.send(packed_data)
+
             else:
                 # Interpret empty result as closed connection
                 print >> sys.stderr, 'closing', sock.getpeername(), 'after reading no data'

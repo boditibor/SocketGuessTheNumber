@@ -2,9 +2,13 @@ import socket
 import struct
 import sys
 import time
+from random import randint
 
 
 class SimpleTCPSelectClient:
+    packets = []
+    msg = ''
+
     def __init__(self, serverAddr='localhost', serverPort=10001):
         self.setupClient(serverAddr, serverPort)
 
@@ -30,23 +34,41 @@ class SimpleTCPSelectClient:
         if not data:
             print '\nDisconnected from server'
             sys.exit()
-        if data == "win":
-            print data
-            sys.exit()
-        if data == "end":
-            print data
-            sys.exit()
         else:
-            print data
+            unpacked_data = struct.unpack("{}s".format(len(data)), data)
+            if len(unpacked_data[0]) == 38:
+                a,b,c,d,e,f = unpacked_data[0].split(' ')
+                self.packets.append(a)
+                self.packets.append(b)
+                self.packets.append(c)
+                self.packets.append(d)
+                self.packets.append(e)
+                self.packets.append(f)
+                print self.packets
+            elif len(unpacked_data[0]) == 25:
+                a,b,c,d = unpacked_data[0].split(' ')
+                self.packets.append(a)
+                self.packets.append(b)
+                self.packets.append(c)
+                self.packets.append(d)
+                print self.packets
+            elif len(unpacked_data[0]) == 12:
+                a, b = unpacked_data[0].split(' ')
+                self.packets.append(a)
+                self.packets.append(b)
+                print self.packets
+            else:
+                print data
 
     def handleConnection(self):
-        while True:
-            msg = raw_input('Message: ')
-            if msg != '':
-                values = (msg[0], int(msg[1:]))
-                print values
-                packer = struct.Struct('cH')
-                packed_data = packer.pack(*values)
+        while self.msg != 'udp':
+            print self.msg
+            randomNumber = randint(1, 3)
+            self.msg = raw_input('Message: ')
+            if self.msg != '':
+                print 'I would like to get ' + str(randomNumber) + ' package!'
+                packer = struct.Struct('i')
+                packed_data = packer.pack(randomNumber)
                 try:
                     self.client.send(packed_data)
                 except socket.error:
@@ -59,3 +81,27 @@ class SimpleTCPSelectClient:
 
 simpleTCPSelectClient = SimpleTCPSelectClient()
 simpleTCPSelectClient.handleConnection()
+
+tmpHaz = ''
+for data in simpleTCPSelectClient.packets:
+    tmpCsomag = data
+    if data == 'haz1':
+        try:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            server_address = ("localhost", 10000)
+            sock.sendto(tmpCsomag + ' ' + tmpHaz, server_address)
+            answ = sock.recvfrom(1024)
+            print(answ[0])
+            sock.close()
+        except socket.error:
+            print 'UDP server seems to be not online!'
+    else:
+        tmpHaz = data
+
+
+
+
+
+
+
+
